@@ -11,6 +11,7 @@ import (
 
 	captainserverconfig "captain/pkg/server/config"
 	"captain/pkg/simple/client/k8s"
+	hellov1alpha1 "captain/pkg/capis/hello/v1alpha1"
 	"captain/pkg/capis/version"
 	"captain/pkg/server/filters"
 	"captain/pkg/server/request"
@@ -70,6 +71,7 @@ func (s *APIServer) PrepareRun(stopCh <-chan struct{}) error {
 //   any attempt to list objects using listers will get empty results.
 func (s *APIServer) installCaptainAPIs() {
 	urlruntime.Must(version.AddToContainer(s.container, s.KubernetesClient.Discovery()))
+	urlruntime.Must(hellov1alpha1.AddToContainer(s.container))
 }
 
 //通过WithRequestInfo解析API请求的信息，WithKubeAPIServer根据API请求信息判断是否代理请求给Kubernetes
