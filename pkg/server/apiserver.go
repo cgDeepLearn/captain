@@ -1,8 +1,13 @@
 package server
 
 import (
+	"bytes"
+	"fmt"
 	"sync"
 	"context"
+	"time"
+	"runtime"
+
 	"github.com/emicklei/go-restful"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
@@ -19,6 +24,7 @@ import (
 	"captain/pkg/server/request"
 	"captain/pkg/simple/client/monitor"
 	"captain/pkg/utils/metrics"
+	"captain/pkg/utils/iputil"
 )
 
 type APIServer struct {
@@ -53,12 +59,12 @@ func (e *errorResponder) Error(w http.ResponseWriter, req *http.Request, err err
 
 func (s *APIServer) PrepareRun(stopCh <-chan struct{}) error {
 	s.container = restful.NewContainer()
-	//s.container.Filter(logRequestAndResponse)
+	s.container.Filter(logRequestAndResponse)
 	// 设定路由为CurlyRouter(快速路由)
 	s.container.Router(restful.CurlyRouter{})
-	//s.container.RecoverHandler(func(panicReason interface{}, httpWriter http.ResponseWriter) {
-	//	logStackOnRecover(panicReason, httpWriter)
-	//})
+	s.container.RecoverHandler(func(panicReason interface{}, httpWriter http.ResponseWriter) {
+		logStackOnRecover(panicReason, httpWriter)
+	})
 
 	//s.installCRDAPIs()
 	s.installMetricsAPI()
@@ -125,5 +131,47 @@ func (s *APIServer) Run(ctx context.Context) (err error) {
 	}
 
 	return err
+}
+
+func logStackOnRecover(panicReason interface{}, w http.ResponseWriter) {
+	var buffer bytes.Buffer
+	buffer.WriteString(fmt.Sprintf("recover from panic situation: - %v\r\n", panicReason))
+	for i := 2; ; i += 1 {
+		_, file, line, ok := runtime.Caller(i)
+		if !ok {
+			break
+		}
+		buffer.WriteString(fmt.Sprintf("    %s:%d\r\n", file, line))
+	}
+	klog.Errorln(buffer.String())
+
+	headers := http.Header{}
+	if ct := w.Header().Get("Content-Type"); len(ct) > 0 {
+		headers.Set("Accept", ct)
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("Internal server error"))
+}
+
+func logRequestAndResponse(req *restful.Request, resp *restful.Response, chain *restful.FilterChain) {
+	start := time.Now()
+	chain.ProcessFilter(req, resp)
+
+	// Always log error response
+	logWithVerbose := klog.V(4)
+	if resp.StatusCode() > http.StatusBadRequest {
+		logWithVerbose = klog.V(0)
+	}
+
+	logWithVerbose.Infof("%s - \"%s %s %s\" %d %d %dms",
+		iputil.RemoteIp(req.Request),
+		req.Request.Method,
+		req.Request.URL,
+		req.Request.Proto,
+		resp.StatusCode(),
+		resp.ContentLength(),
+		time.Since(start)/time.Millisecond,
+	)
 }
 
