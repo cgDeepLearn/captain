@@ -1,6 +1,7 @@
 package server
 
 import (
+	"sync"
 	"context"
 	"github.com/emicklei/go-restful"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -8,12 +9,16 @@ import (
 	"k8s.io/klog"
 	"net/http"
     urlruntime "k8s.io/apimachinery/pkg/util/runtime"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	captainserverconfig "captain/pkg/server/config"
+	monitorv1alpha1 "captain/pkg/capis/monitor/v1alpha1"
 	"captain/pkg/simple/client/k8s"
 	"captain/pkg/capis/version"
 	"captain/pkg/server/filters"
 	"captain/pkg/server/request"
+	"captain/pkg/simple/client/monitor"
+	"captain/pkg/utils/metrics"
 )
 
 type APIServer struct {
@@ -27,7 +32,17 @@ type APIServer struct {
 	container *restful.Container
 
 	KubernetesClient k8s.Client
+
+	// monitor
+	MonitorClient monitor.Interface
+	// metricsserver
+	MetricsClient monitor.Interface
+
+	// controller-runtime client
+	RuntimeClient runtimeclient.Client
 }
+
+var initMetrics sync.Once
 
 type errorResponder struct{}
 
@@ -45,9 +60,8 @@ func (s *APIServer) PrepareRun(stopCh <-chan struct{}) error {
 	//	logStackOnRecover(panicReason, httpWriter)
 	//})
 
-	//s.installKubeSphereAPIs(stopCh)
 	//s.installCRDAPIs()
-	//s.installMetricsAPI()
+	s.installMetricsAPI()
 	//s.container.Filter(monitorRequest)
 
 	for _, ws := range s.container.RegisteredWebServices() {
@@ -70,12 +84,19 @@ func (s *APIServer) PrepareRun(stopCh <-chan struct{}) error {
 //   any attempt to list objects using listers will get empty results.
 func (s *APIServer) installCaptainAPIs() {
 	urlruntime.Must(version.AddToContainer(s.container, s.KubernetesClient.Discovery()))
+	urlruntime.Must(monitorv1alpha1.AddToContainer(s.container, s.KubernetesClient.Kubernetes(), s.MonitorClient, s.MetricsClient, s.RuntimeClient))
+}
+
+func (s *APIServer) installMetricsAPI() {
+	initMetrics.Do(registerMetrics)
+	metrics.Defaults.Install(s.container)
 }
 
 //通过WithRequestInfo解析API请求的信息，WithKubeAPIServer根据API请求信息判断是否代理请求给Kubernetes
 func (s *APIServer) buildHandlerChain(stopCh <-chan struct{}) {
 	requestInfoResolver := &request.RequestInfoFactory{
-		APIPrefixes:          sets.NewString("api", "apis"),
+		APIPrefixes:          sets.NewString("api", "apis", "capis", "capi"),
+		GrouplessAPIPrefixes: sets.NewString("api", "capi"),
 	}
 
 	handler := s.Server.Handler

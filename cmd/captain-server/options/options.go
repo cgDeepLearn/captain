@@ -12,6 +12,7 @@ import (
 	captainserverconfig "captain/pkg/server/config"
 	genericoptions "captain/pkg/simple/server/options"
 	cliflag "k8s.io/component-base/cli/flag"
+	"captain/pkg/simple/client/monitor/metricsserver"
 )
 
 type ServerRunOptions struct {
@@ -62,6 +63,8 @@ func (s *ServerRunOptions) NewAPIServer(stopCh <-chan struct{}) (*server.APIServ
 		return nil, err
 	}
 	apiServer.KubernetesClient = kubernetesClient
+	apiServer.MetricsClient = metricsserver.NewMetricsClient(kubernetesClient.Kubernetes(), s.KubernetesOptions)
+	apiServer.MonitorClient = apiServer.MetricsClient
 
 	captainServer := &http.Server{
 		Addr: fmt.Sprintf(":%d", s.GenericServerRunOptions.InsecurePort),
