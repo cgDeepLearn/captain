@@ -80,7 +80,7 @@ func (_ ClusterOption) Apply(o *QueryOptions) {
 type NodeOption struct {
 	ResourceFilter   string
 	NodeName         string
-	PVCFilter        string
+	//PVCFilter        string
 	StorageClassName string
 	QueryType        string
 }
@@ -89,7 +89,7 @@ func (no NodeOption) Apply(o *QueryOptions) {
 	o.Level = LevelNode
 	o.ResourceFilter = no.ResourceFilter
 	o.NodeName = no.NodeName
-	o.PVCFilter = no.PVCFilter
+	//o.PVCFilter = no.PVCFilter
 	o.StorageClassName = no.StorageClassName
 	o.QueryType = no.QueryType
 }
@@ -98,7 +98,7 @@ type NamespaceOption struct {
 	ResourceFilter   string
 	WorkspaceName    string
 	NamespaceName    string
-	PVCFilter        string
+	//PVCFilter        string
 	StorageClassName string
 }
 
@@ -106,7 +106,7 @@ func (no NamespaceOption) Apply(o *QueryOptions) {
 	o.Level = LevelNamespace
 	o.ResourceFilter = no.ResourceFilter
 	o.NamespaceName = no.NamespaceName
-	o.PVCFilter = no.PVCFilter
+	//o.PVCFilter = no.PVCFilter
 	o.StorageClassName = no.StorageClassName
 }
 

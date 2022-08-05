@@ -112,6 +112,8 @@ func parseRequestParams(req *restful.Request) reqParams {
 	rp.nodeName = req.PathParameter("node")
 	rp.podName = req.PathParameter("pod")
 	rp.containerName = req.PathParameter("container")
+	rp.metric = req.QueryParameter("metric")
+	rp.queryType = req.QueryParameter("type")
 	return rp
 }
 
