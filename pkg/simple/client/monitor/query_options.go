@@ -81,7 +81,7 @@ type NodeOption struct {
 	ResourceFilter   string
 	NodeName         string
 	//PVCFilter        string
-	StorageClassName string
+	//StorageClassName string
 	QueryType        string
 }
 
@@ -90,7 +90,7 @@ func (no NodeOption) Apply(o *QueryOptions) {
 	o.ResourceFilter = no.ResourceFilter
 	o.NodeName = no.NodeName
 	//o.PVCFilter = no.PVCFilter
-	o.StorageClassName = no.StorageClassName
+	//o.StorageClassName = no.StorageClassName
 	o.QueryType = no.QueryType
 }
 
@@ -99,7 +99,7 @@ type NamespaceOption struct {
 	WorkspaceName    string
 	NamespaceName    string
 	//PVCFilter        string
-	StorageClassName string
+	//StorageClassName string
 }
 
 func (no NamespaceOption) Apply(o *QueryOptions) {
@@ -107,7 +107,7 @@ func (no NamespaceOption) Apply(o *QueryOptions) {
 	o.ResourceFilter = no.ResourceFilter
 	o.NamespaceName = no.NamespaceName
 	//o.PVCFilter = no.PVCFilter
-	o.StorageClassName = no.StorageClassName
+	//o.StorageClassName = no.StorageClassName
 }
 
 type ApplicationsOption struct {

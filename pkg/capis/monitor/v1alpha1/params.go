@@ -33,20 +33,20 @@ const (
 	ErrParameterNotfound = "Parmameter [%s] not found"
 )
 
-type MonitorLevel int
+// type MonitorLevel int
 
-const (
-	LevelCluster MonitorLevel  = 1 << iota
-	LevelNode
-	LevelNamespace
-	LevelWorkload
-	LevelService
-	LevelPod
-	LevelContainer
-	LevelPVC
-	LevelComponent
-	LevelIngress
-)
+// const (
+// 	LevelCluster MonitorLevel  = 1 << iota
+// 	LevelNode
+// 	LevelNamespace
+// 	LevelWorkload
+// 	LevelService
+// 	LevelPod
+// 	LevelContainer
+// 	LevelPVC
+// 	LevelComponent
+// 	LevelIngress
+// )
 
 
 type reqParams struct {
@@ -62,6 +62,7 @@ type reqParams struct {
 	namespacedResourcesFilter string
 	resourceFilter            string
 	nodeName                  string
+	workspaceName             string
 	namespaceName             string
 	workloadKind              string
 	workloadName              string
@@ -72,11 +73,13 @@ type reqParams struct {
 	componentType             string
 	expression                string
 	metric                    string
+	applications              string
 	cluster                   string
 	ingress                   string
 	job                       string
 	services                  string
 	duration                  string
+	pvcFilter                 string
 	queryType                 string
 }
 
@@ -117,21 +120,40 @@ func parseRequestParams(req *restful.Request) reqParams {
 	return rp
 }
 
-func makeQueryOptions(rp reqParams, level MonitorLevel) (qo queryOptions, err error) {
+func makeQueryOptions(rp reqParams, level monitor.MonitorLevel) (qo queryOptions, err error) {
 	if rp.metricFilter == "" {
 		qo.metricFilter = DefaultFilter
 	}
-
 	switch level {
-	case LevelNode:
+	case monitor.LevelCluster:
+		qo.option = monitor.ClusterOption{}
+		qo.namedMetrics = monitorModel.ClusterMetrics
+	case monitor.LevelNode:
 		qo.namedMetrics = monitorModel.NodeMetrics
+		qo.option = monitor.NodeOption{
+			ResourceFilter:   rp.resourceFilter,
+			NodeName:         rp.nodeName,
+			QueryType:        rp.queryType,
+		}
 	
-	case LevelNamespace:
+	case monitor.LevelNamespace:
 		qo.namedMetrics = monitorModel.NamespaceMetrics
+		qo.option = monitor.NamespaceOption{
+			ResourceFilter:   rp.resourceFilter,
+			NamespaceName:    rp.namespaceName,
+		}
 
-	case LevelPod:
+	case monitor.LevelPod:
 		qo.namedMetrics = monitorModel.PodMetrics
-
+		qo.option = monitor.PodOption{
+			NamespacedResourcesFilter: rp.namespacedResourcesFilter,
+			ResourceFilter:            rp.resourceFilter,
+			NodeName:                  rp.nodeName,
+			NamespaceName:             rp.namespaceName,
+			WorkloadKind:              rp.workloadKind,
+			WorkloadName:              rp.workloadName,
+			PodName:                   rp.podName,
+		}
 	}
 	
 	if rp.start != "" && rp.end != "" {
